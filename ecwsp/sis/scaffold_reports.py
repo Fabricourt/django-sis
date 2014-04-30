@@ -41,10 +41,10 @@ class TimeBasedForm(forms.Form):
 
     date_begin = forms.DateField(initial=get_default_start_date, validators=settings.DATE_VALIDATORS)
     date_end = forms.DateField(initial=get_default_end_date, validators=settings.DATE_VALIDATORS)
-    school_year = forms.ModelChoiceField(initial=get_active_year, queryset=SchoolYear.objects.all())
-    marking_periods = forms.ModelMultipleChoiceField(
-        initial=get_active_marking_periods,
-        queryset=MarkingPeriod.objects.all())
+    #school_year = forms.ModelChoiceField(initial=get_active_year, queryset=SchoolYear.objects.all())
+    #marking_periods = forms.ModelMultipleChoiceField(
+    #    initial=get_active_marking_periods,
+    #    queryset=MarkingPeriod.objects.all())
 
 
 class SchoolDateFilter(Filter):
@@ -134,16 +134,6 @@ class StudentYearFilter(ModelMultipleChoiceFilter):
     compare_field_string="year"
     add_fields = ['year']
     model = GradeLevel
-
-class BrendanForm(forms.Form):
-    one   = forms.IntegerField(widget=forms.TextInput(attrs={'placeholder': "one"}))
-    two   = forms.IntegerField(widget=forms.TextInput(attrs={'placeholder': "two"}))
-    three = forms.IntegerField(widget=forms.TextInput(attrs={'placeholder': "three"}))
-    four  = forms.IntegerField(widget=forms.TextInput(attrs={'placeholder': "four "}),required=False)
-    five  = forms.ChoiceField(required=False)
-
-class BrendanFilter(Filter):
-    form_class = BrendanForm
 
 class DisciplineForm(forms.Form):
     disc_action = forms.ModelChoiceField(queryset=DisciplineAction.objects.all())
@@ -579,7 +569,6 @@ class SisReport(ScaffoldReport):
         TemplateSelection(),
         IncludeDeleted(),
         ScheduleDaysFilter(),
-        BrendanFilter(),
     )
     report_buttons = (
         AspReportButton(),
@@ -711,7 +700,7 @@ class SisReport(ScaffoldReport):
                 while i <= 6:
                     setattr(course, "grade" + str(i), "")
                     i += 1
-                course.final = course_enrollment.grade
+                course.final = course_enrollment.get_grade(self.date_end)
 
                 if self.is_passing(course.final):
                     year.credits += course.credits
@@ -739,7 +728,10 @@ class SisReport(ScaffoldReport):
                 setattr(year, 'mp' + str(i) + 'ave', "")
                 i += 1
 
-            year.ave = student.studentyeargrade_set.get(year=year).grade
+            if self.date_end >= year.end_date:
+                year.ave = student.studentyeargrade_set.get(year=year).grade
+            else:
+                year.ave = student.studentyeargrade_set.get(year=year).get_grade(date_report=self.date_end)
 
             # Attendance for year
             if not hasattr(self, 'year_days'):
